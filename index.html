@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenLayers Elevation Profile</title>
+    <!--Openlayers-->
+    <script src="https://cdn.jsdelivr.net/npm/ol@v8.2.0/dist/ol.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v8.2.0/ol.css">
+
+    <!-- Load Chart.js for displaying elevation profile -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Load Lottie library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.7.10/lottie.min.js"></script>
+
+    <!--Fonts-->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+
+
+
+
+    <style>
+        body,
+        h1,
+        #elevation-text {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            color: #515151;
+        }
+
+
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #elevation-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0;
+            background-color: #ffffff;
+            overflow: hidden;
+            transition: height 0.5s;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 20px 20px 0px 0px;
+        }
+
+        #elevation-text {
+            font-size: 18px;
+            /*font-weight: bold;*/
+        }
+
+        #icon-elevation-container {
+            display: flex;
+            align-items: center;
+        }
+
+        #icon-elevation-container .material-icons-outlined {
+            margin-right: 5px;
+            /* Adjust spacing between icon and text as needed */
+        }
+
+        #elevation-container.open {
+            height: 320px;
+            /* Adjust the height as needed */
+        }
+
+        #chart {
+            width: 100%;
+            height: 200%;
+            padding: 25px 10px;
+        }
+
+        #close-elevation-container {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            cursor: pointer;
+        }
+
+
+        #elevProfileBtn {
+            position: fixed;
+            top: 375px;
+            left: 25px;
+            background-color: #ffffff;
+            border: none;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+
+        }
+
+        #elevProfileBtn i.material-icons {
+            font-size: 30px;
+            color: #515151;
+        }
+
+        #elevProfileBtn.active {
+            background-color: #00bfff;
+        }
+
+        #elevProfileBtn.active i.material-icons {
+            color: #ffffff;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>OpenLayers Elevation Profile</h1>
+    <div id="map"></div>
+
+    <button id="elevProfileBtn">
+        <i class="material-icons">landscape</i>
+    </button>
+
+    <div id="elevation-container">
+        <div id="icon-elevation-container">
+            <span class="material-icons-outlined" style="font-size: 30px;">landscape</span>
+            <div id="elevation-text">Elevation Profile</div>
+        </div>
+        <canvas id="chart" style="display: none;"></canvas>
+        <div id="animation-container" style="width: 200px; height: 200px;"></div>
+        <span id="close-elevation-container" class="material-icons-outlined" style="font-size: 24px;">cancel</span>
+    </div>
+
+
+
+
+    <!-- <button onclick="toggleElevationContainer()">Toggle Elevation Profile</button>-->
+
+    <script>
+        // Initialize the map
+        var map = new ol.Map({
+            target: 'map',
+            layers: [
+                new ol.layer.Tile({
+                    source: new ol.source.XYZ({
+                        url: "https://api.maptiler.com/maps/topo-v2/256/{z}/{x}/{y}@2x.png?key=ygYhKJ5CVp94V87ZZ49x",
+                        attributions: '© <a href="https://www.maptiler.com/copyright/">MapTiler</a>'
+                    })
+                })
+            ],
+            view: new ol.View({
+                center: ol.proj.fromLonLat([108.0378392, 12.348229]),
+                zoom: 15
+            })
+        });
+
+        // Add a vector layer for drawing interactions
+        var drawLineElevProfile;
+
+        // Flag to track if elevation profile button is active
+        var isElevationProfileActive = false;
+
+        document.getElementById('elevProfileBtn').addEventListener('click', function () {
+            if (!isElevationProfileActive) {
+                // Enable draw interaction
+                drawLineElevProfile = new ol.layer.Vector({
+                    source: new ol.source.Vector(),
+                    style: new ol.style.Style({
+                        fill: new ol.style.Fill({
+                            color: 'rgba(255, 255, 255, 0.2)'
+                        }),
+                        stroke: new ol.style.Stroke({
+                            color: '#ffcc33',
+                            width: 4
+                        }),
+                        image: new ol.style.Circle({
+                            radius: 7,
+                            fill: new ol.style.Fill({
+                                color: '#ffcc33'
+                            })
+                        })
+                    })
+                });
+                map.addLayer(drawLineElevProfile);
+
+                // Add a draw interaction
+                var draw = new ol.interaction.Draw({
+                    source: drawLineElevProfile.getSource(),
+                    type: 'LineString'
+                });
+                map.addInteraction(draw);
+
+                // Event listener to handle drawing completion
+                draw.on('drawend', function (event) {
+                    var lineString = event.feature.getGeometry();
+                    displayElevationProfile(lineString);
+                    openElevationContainer(); // Automatically open the elevation container when drawing is complete
+                });
+
+                // Mark elevation profile button as active
+                document.getElementById('elevProfileBtn').classList.add('active');
+                isElevationProfileActive = true;
+            } else {
+                // Disable draw interaction
+                map.removeLayer(drawLineElevProfile);
+                drawLineElevProfile = null;
+
+                // Remove draw interaction
+                map.getInteractions().forEach(function (interaction) {
+                    if (interaction instanceof ol.interaction.Draw) {
+                        map.removeInteraction(interaction);
+                    }
+                });
+
+                // Mark elevation profile button as inactive
+                document.getElementById('elevProfileBtn').classList.remove('active');
+                isElevationProfileActive = false;
+            }
+        });
+
+        async function fetchElevationData(coordinates) {
+            const accessToken = 'pk.eyJ1IjoiY21sb3NhcmlhIiwiYSI6ImNsZGJ4cHp2ajAwMGszb3FmeXpxYmVpMHkifQ.3wsPFc9FkszxcH27eEq2dw';
+            const elevationData = [];
+
+            try {
+                for (let i = 0; i < coordinates.length - 1; i++) {
+                    const startCoord = ol.proj.transform(coordinates[i], 'EPSG:3857', 'EPSG:4326');
+                    const endCoord = ol.proj.transform(coordinates[i + 1], 'EPSG:3857', 'EPSG:4326');
+
+                    // Calculate number of points to interpolate between start and end coordinates
+                    const numPoints = 30; // Increased number of points
+
+                    for (let j = 0; j <= numPoints; j++) {
+                        const lon = startCoord[0] + (endCoord[0] - startCoord[0]) * (j / numPoints);
+                        const lat = startCoord[1] + (endCoord[1] - startCoord[1]) * (j / numPoints);
+
+                        const url = `https://api.mapbox.com/v4/mapbox.mapbox-terrain-v2/tilequery/${lon},${lat}.json?layers=contour&access_token=${accessToken}`;
+                        const response = await fetch(url);
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.features && data.features.length > 0) {
+                                // Use all features to calculate elevation
+                                let totalElevation = 0;
+                                for (let feature of data.features) {
+                                    totalElevation += feature.properties.ele;
+                                }
+                                const avgElevation = totalElevation / data.features.length;
+                                elevationData.push({ x: lon, y: lat, elevation: avgElevation });
+                            } else {
+                                console.error("No elevation data found for point:", lon, lat);
+                                elevationData.push({ x: lon, y: lat, elevation: null }); // Push null for missing elevation data
+                            }
+                        } else {
+                            console.error("Failed to fetch elevation data:", response.status, response.statusText);
+                            elevationData.push({ x: lon, y: lat, elevation: null }); // Push null for failed requests
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch elevation data:", error);
+            }
+
+            return elevationData;
+        }
+
+        async function displayElevationProfile(lineString) {
+            var coordinates = lineString.getCoordinates();
+            var elevationData = await fetchElevationData(coordinates);
+
+            var chartCanvas = document.getElementById('chart').getContext('2d');
+            var elevationChart = new Chart(chartCanvas, {
+                type: 'line',
+                data: {
+                    labels: elevationData.map(data => ''),
+                    datasets: [{
+                        label: 'Elevation Profile (meters)',
+                        data: elevationData.map(data => data.elevation),
+                        borderColor: '#ffcc33',
+                        backgroundColor: 'rgba(0, 0, 255, 0.1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Elevation (m)',
+                                fontSize: 20 // Increase font size for y-axis label
+                            },
+                            ticks: {
+                                fontSize: 20, // Increase font size for y-axis ticks
+                                callback: function (value, index, values) {
+                                    return value + 'm'; // Add 'm' after the numbers
+                                }
+                            }
+                        },
+                        x: {
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Distance (m)',
+                                fontSize: 20 // Increase font size for x-axis label
+                            },
+                            ticks: {
+                                fontSize: 20 // Increase font size for x-axis ticks
+                            }
+                        }
+                    },
+                    elements: {
+                        line: {
+                            tension: 0.4 // Adjust tension for smoother curve (0 to 1)
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false // Hide the legend
+                        }
+                    }
+                }
+            });
+
+            // Hide animation container and show chart canvas
+            document.getElementById('animation-container').style.display = 'none';
+            document.getElementById('chart').style.display = 'block';
+        }
+
+        function toggleElevationContainer() {
+            var elevationContainer = document.getElementById('elevation-container');
+            elevationContainer.classList.toggle('open');
+        }
+
+        function openElevationContainer() {
+            var elevationContainer = document.getElementById('elevation-container');
+            elevationContainer.classList.add('open');
+
+            // Show animation container and hide chart canvas
+            document.getElementById('animation-container').style.display = 'block';
+            document.getElementById('chart').style.display = 'none';
+
+            // Load Lottie animation
+            var animationURL = "https://lottie.host/27210ff8-9561-4728-8db6-456664cba28d/yl19AQRU5T.json";
+            var animationContainer = document.getElementById('animation-container');
+            var animation = lottie.loadAnimation({
+                container: animationContainer,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                path: animationURL
+            });
+        }
+
+        // Add event listener to close the elevation container when the close icon is clicked
+        document.getElementById('close-elevation-container').addEventListener('click', function () {
+            var elevationContainer = document.getElementById('elevation-container');
+            elevationContainer.classList.remove('open');
+        });
+
+    </script>
+</body>
+
+</html>
