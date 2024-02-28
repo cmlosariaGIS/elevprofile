@@ -248,7 +248,6 @@
         });
 
 
-
         // Handle draw end event when the finish button is clicked
         document.getElementById('finishdrawLineElevProfile').addEventListener('click', function () {
             var draw = map.getInteractions().getArray().find(interaction => interaction instanceof ol.interaction.Draw);
@@ -271,15 +270,15 @@
                 var center = ol.extent.getCenter(extent);
 
                 // Adjust the center to move the extent to the top half of the screen
-                center[1] -= (elevationContainerHeight + topMargin + 0) * map.getView().getResolution(); // Adjusted by adding 200
+                center[1] -= (elevationContainerHeight + topMargin + 30) * map.getView().getResolution(); // Adjusted by adding 0
 
                 // Set the new center and zoom to ensure the drawn line is visible
                 map.getView().setCenter(center);
-                map.getView().fit(extent, { duration: 5000, easing: ol.easing.easeOut }); // Use easeOut easing function for smooth animation
+                //map.getView().fit(extent, { duration: 5000, easing: ol.easing.easeOut }); // Use easeOut easing function for smooth animation
 
                 // Zoom in by adjusting the zoom level
                 var currentZoom = map.getView().getZoom();
-                map.getView().setZoom(currentZoom + 1); // Adjust the value as needed to zoom in
+                map.getView().setZoom(currentZoom + 0.25); // Adjust the value as needed to zoom in
 
                 // Show the elevation container
                 var elevationContainer = document.getElementById('elevation-container');
@@ -292,15 +291,6 @@
             // Or you can remove the button from the DOM entirely:
             // button.parentNode.removeChild(button);
         });
-
-
-
-
-
-
-
-
-
 
 
         // Event listener for the map click event
