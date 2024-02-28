@@ -58,7 +58,7 @@
         }
 
         #elevation-text {
-            font-size: 18px;
+            font-size: 16px;
             /*font-weight: bold;*/
         }
 
@@ -114,17 +114,51 @@
         }
 
         #elevProfileBtn.active {
-            background-color: #00bfff;
+            background-color: #FF6666;
         }
 
         #elevProfileBtn.active i.material-icons {
             color: #ffffff;
         }
+
+        #finishdrawLineElevProfile {
+            position: fixed;
+            bottom: 20%;
+            left: 50%;
+            transform: translate(-50%, 0);
+        }
+
+        .finish-drawLineElevProfile {
+            background-color: #ffffff;
+            padding: 15px 20px;
+            border-radius: 100px;
+            font-size: 35px;
+            color: #515151;
+            outline: none;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Be Vietnam Pro', sans-serif;
+        }
+
+        .finish-drawLineElevProfile {
+            cursor: pointer;
+            background-color: #f1f1f1;
+        }
+
+        /*finish drawing check icon*/
+        .check-icon {
+            margin-right: 10px;
+            font-family: 'Material Icons', sans-serif;
+        }
     </style>
 </head>
 
 <body>
-    <h1>OpenLayers Elevation Profile</h1>
+    <!--<h1>OpenLayers Elevation Profile</h1>-->
     <div id="map"></div>
 
     <button id="elevProfileBtn">
@@ -141,10 +175,17 @@
         <span id="close-elevation-container" class="material-icons-outlined" style="font-size: 24px;">cancel</span>
     </div>
 
-
+    <button id="finishdrawLineElevProfile" class="finish-drawLineElevProfile hidden"
+        style="font-size: 18px; background-color: #386c34; color: white;">
+        <span class="material-icons" style="font-size: 20px;">done_outline</span>
+        Hoàn Thành
+    </button>
 
 
     <!-- <button onclick="toggleElevationContainer()">Toggle Elevation Profile</button>-->
+
+
+
 
     <script>
         // Initialize the map
@@ -164,15 +205,87 @@
             })
         });
 
+        // Hide the button on map load
+        document.getElementById('finishdrawLineElevProfile').style.display = 'none';
+
         // Add a vector layer for drawing interactions
         var drawLineElevProfile;
-
-        // Flag to track if elevation profile button is active
         var isElevationProfileActive = false;
+        var clickCounter = 0;
+        var isDrawingActivated = false; // Variable to track if drawing is activated
 
+        // Function to toggle elevation container
+        function toggleElevationContainer() {
+            var elevationContainer = document.getElementById('elevation-container');
+            elevationContainer.classList.toggle('open');
+        }
+
+        // Function to open elevation container
+        function openElevationContainer() {
+            var elevationContainer = document.getElementById('elevation-container');
+            elevationContainer.classList.add('open');
+
+            // Show animation container and hide chart canvas
+            document.getElementById('animation-container').style.display = 'block';
+            document.getElementById('chart').style.display = 'none';
+
+            // Load Lottie animation
+            var animationURL = "https://lottie.host/27210ff8-9561-4728-8db6-456664cba28d/yl19AQRU5T.json";
+            var animationContainer = document.getElementById('animation-container');
+            var animation = lottie.loadAnimation({
+                container: animationContainer,
+                renderer: 'svg',
+                loop: true,
+                autoplay: true,
+                path: animationURL
+            });
+        }
+
+        // Event listener to close the elevation container when the close icon is clicked
+        document.getElementById('close-elevation-container').addEventListener('click', function () {
+            var elevationContainer = document.getElementById('elevation-container');
+            elevationContainer.classList.remove('open');
+        });
+
+        // Handle draw end event when the finish button is clicked
+        document.getElementById('finishdrawLineElevProfile').addEventListener('click', function () {
+            var draw = map.getInteractions().getArray().find(interaction => interaction instanceof ol.interaction.Draw);
+            if (draw) {
+                draw.finishDrawing();
+            }
+
+            // Hide or remove the button after it's clicked
+            var button = document.getElementById('finishdrawLineElevProfile');
+            button.style.display = 'none'; // Hide the button
+            // Or you can remove the button from the DOM entirely:
+            // button.parentNode.removeChild(button);
+        });
+
+        // Event listener for the map click event
+        map.on('click', function (event) {
+            // Only start counting clicks when drawing is activated
+            if (isDrawingActivated) {
+                // Increment click counter
+                clickCounter++;
+
+                // If the click counter reaches 2, show the button
+                if (clickCounter === 2) {
+                    document.getElementById('finishdrawLineElevProfile').style.display = 'block';
+                }
+            }
+        });
+
+        // Function to reset the click counter and hide the finishdrawLineElevProfile button
+        function resetClickCounter() {
+            clickCounter = 0;
+            document.getElementById('finishdrawLineElevProfile').style.display = 'none';
+        }
+
+        // Event listener for the elevation profile button
         document.getElementById('elevProfileBtn').addEventListener('click', function () {
             if (!isElevationProfileActive) {
                 // Enable draw interaction
+                // Add draw interaction only when the elevation profile button is clicked
                 drawLineElevProfile = new ol.layer.Vector({
                     source: new ol.source.Vector(),
                     style: new ol.style.Style({
@@ -207,9 +320,19 @@
                     openElevationContainer(); // Automatically open the elevation container when drawing is complete
                 });
 
+                // Change button icon to 'close'
+                var btnIcon = document.getElementById('elevProfileBtn').querySelector('i.material-icons');
+                btnIcon.textContent = 'close';
+
                 // Mark elevation profile button as active
                 document.getElementById('elevProfileBtn').classList.add('active');
                 isElevationProfileActive = true;
+
+                // Set drawing activation flag to true
+                isDrawingActivated = true;
+
+                // Reset the click counter
+                resetClickCounter();
             } else {
                 // Disable draw interaction
                 map.removeLayer(drawLineElevProfile);
@@ -222,9 +345,29 @@
                     }
                 });
 
+                // Hide the chart container
+                document.getElementById('chart').style.display = 'none';
+
+                // Dismiss the elevation container
+                var elevationContainer = document.getElementById('elevation-container');
+                elevationContainer.classList.remove('open');
+
+                // Reset the click counter
+                resetClickCounter();
+
+                // Display the finishdrawLineElevProfile button
+                document.getElementById('finishdrawLineElevProfile').style.display = 'none';
+
+                // Change button icon back to 'landscape'
+                var btnIcon = document.getElementById('elevProfileBtn').querySelector('i.material-icons');
+                btnIcon.textContent = 'landscape';
+
                 // Mark elevation profile button as inactive
                 document.getElementById('elevProfileBtn').classList.remove('active');
                 isElevationProfileActive = false;
+
+                // Set drawing activation flag to false when deactivating elevation profile
+                isDrawingActivated = false;
             }
         });
 
@@ -276,6 +419,14 @@
         async function displayElevationProfile(lineString) {
             var coordinates = lineString.getCoordinates();
             var elevationData = await fetchElevationData(coordinates);
+
+            // Get the existing chart instance
+            var existingChart = Chart.getChart('chart');
+
+            // Destroy the existing chart if it exists
+            if (existingChart) {
+                existingChart.destroy();
+            }
 
             var chartCanvas = document.getElementById('chart').getContext('2d');
             var elevationChart = new Chart(chartCanvas, {
@@ -333,39 +484,8 @@
             document.getElementById('animation-container').style.display = 'none';
             document.getElementById('chart').style.display = 'block';
         }
-
-        function toggleElevationContainer() {
-            var elevationContainer = document.getElementById('elevation-container');
-            elevationContainer.classList.toggle('open');
-        }
-
-        function openElevationContainer() {
-            var elevationContainer = document.getElementById('elevation-container');
-            elevationContainer.classList.add('open');
-
-            // Show animation container and hide chart canvas
-            document.getElementById('animation-container').style.display = 'block';
-            document.getElementById('chart').style.display = 'none';
-
-            // Load Lottie animation
-            var animationURL = "https://lottie.host/27210ff8-9561-4728-8db6-456664cba28d/yl19AQRU5T.json";
-            var animationContainer = document.getElementById('animation-container');
-            var animation = lottie.loadAnimation({
-                container: animationContainer,
-                renderer: 'svg',
-                loop: true,
-                autoplay: true,
-                path: animationURL
-            });
-        }
-
-        // Add event listener to close the elevation container when the close icon is clicked
-        document.getElementById('close-elevation-container').addEventListener('click', function () {
-            var elevationContainer = document.getElementById('elevation-container');
-            elevationContainer.classList.remove('open');
-        });
-
     </script>
+
 </body>
 
 </html>
