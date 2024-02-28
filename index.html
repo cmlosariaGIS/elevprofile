@@ -404,7 +404,7 @@
         });
 
         async function fetchElevationData(coordinates) {
-            const accessToken = 'pk.eyJ1IjoiY21sb3NhcmlhIiwiYSI6ImNsZGJ4cHp2ajAwMGszb3FmeXpxYmVpMHkifQ.3wsPFc9FkszxcH27eEq2dw';
+            //const accessToken = 'pk.eyJ1IjoiY21sb3NhcmlhIiwiYSI6ImNsZGJ4cHp2ajAwMGszb3FmeXpxYmVpMHkifQ.3wsPFc9FkszxcH27eEq2dw';
             const elevationData = [];
 
             try {
@@ -416,10 +416,11 @@
                     const numPoints = 30; // Increased number of points
 
                     for (let j = 0; j <= numPoints; j++) {
-                        const lon = startCoord[0] + (endCoord[0] - startCoord[0]) * (j / numPoints);
+                        const lng = startCoord[0] + (endCoord[0] - startCoord[0]) * (j / numPoints);
                         const lat = startCoord[1] + (endCoord[1] - startCoord[1]) * (j / numPoints);
 
-                        const url = `https://api.mapbox.com/v4/mapbox.mapbox-terrain-v2/tilequery/${lon},${lat}.json?layers=contour&access_token=${accessToken}`;
+                        //const url = `https://api.mapbox.com/v4/mapbox.mapbox-terrain-v2/tilequery/${lng},${lat}.json?layers=contour&access_token=${accessToken}`;
+                        const url = `https://api.mapbox.com/v4/mapbox.mapbox-terrain-v2/tilequery/${lng},${lat}.json?layers=contour&limit=50&access_token=pk.eyJ1IjoiY21sb3NhcmlhIiwiYSI6ImNsZGJ4cHp2ajAwMGszb3FmeXpxYmVpMHkifQ.3wsPFc9FkszxcH27eEq2dw`;
                         const response = await fetch(url);
                         if (response.ok) {
                             const data = await response.json();
@@ -430,14 +431,14 @@
                                     totalElevation += feature.properties.ele;
                                 }
                                 const avgElevation = totalElevation / data.features.length;
-                                elevationData.push({ x: lon, y: lat, elevation: avgElevation });
+                                elevationData.push({ x: lng, y: lat, elevation: avgElevation });
                             } else {
-                                console.error("No elevation data found for point:", lon, lat);
-                                elevationData.push({ x: lon, y: lat, elevation: null }); // Push null for missing elevation data
+                                console.error("No elevation data found for point:", lng, lat);
+                                elevationData.push({ x: lng, y: lat, elevation: null }); // Push null for missing elevation data
                             }
                         } else {
                             console.error("Failed to fetch elevation data:", response.status, response.statusText);
-                            elevationData.push({ x: lon, y: lat, elevation: null }); // Push null for failed requests
+                            elevationData.push({ x: lng, y: lat, elevation: null }); // Push null for failed requests
                         }
                     }
                 }
