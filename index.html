@@ -564,9 +564,27 @@
         });
 
 
-        //Fetching elevation data
+
+        ////////////Function to calculate distance between two points using Haversine formula\\\\\\\\\\
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const earthRadius = 6371; // Radius of the Earth in kilometers
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const distance = earthRadius * c * 1000; // Convert to meters
+
+            return distance;
+        }
+
+        ////////////Function to fethc elevation value from MapBox\\\\\\\\\\\\\\
         async function fetchElevationData(coordinates) {
             const elevationData = [];
+            let totalDistance = 0; // Initialize total distance
 
             try {
                 for (let i = 0; i < coordinates.length - 1; i++) {
@@ -574,9 +592,6 @@
                     const endCoord = ol.proj.transform(coordinates[i + 1], 'EPSG:3857', 'EPSG:4326');
 
                     const numPoints = 30; // Interpolate 30 points between each pair of coordinates to get more detailed elevation data
-
-                    // Push the elevation data for the starting point
-                    elevationData.push({ x: startCoord[0], y: startCoord[1], elevation: null, label: `Start (${startCoord[0]}, ${startCoord[1]})` });
 
                     for (let j = 0; j <= numPoints; j++) {
                         const lng = startCoord[0] + (endCoord[0] - startCoord[0]) * (j / numPoints);
@@ -593,22 +608,26 @@
                                     totalElevation += feature.properties.ele;
                                 }
                                 const avgElevation = totalElevation / data.features.length;
-                                elevationData.push({ x: lng, y: lat, elevation: avgElevation, label: null });
+
+                                // Calculate distance from the first point
+                                if (i > 0 || j > 0) {
+                                    const firstCoord = ol.proj.transform(coordinates[0], 'EPSG:3857', 'EPSG:4326');
+                                    totalDistance = calculateDistance(firstCoord[1], firstCoord[0], lat, lng);
+                                }
+
+                                elevationData.push({ x: totalDistance, y: lat, elevation: avgElevation, label: null });
 
                                 // Log elevation value for debugging
-                                console.log(`Elevation at (${lng}, ${lat}): ${avgElevation}`);
+                                console.log(`Elevation at (${lng}, ${lat}): ${avgElevation}, Distance: ${totalDistance}`);
                             } else {
                                 console.error("No elevation data found for point:", lng, lat);
-                                elevationData.push({ x: lng, y: lat, elevation: null, label: null });
+                                elevationData.push({ x: totalDistance, y: lat, elevation: null, label: null });
                             }
                         } else {
                             console.error("Failed to fetch elevation data:", response.status, response.statusText);
-                            elevationData.push({ x: lng, y: lat, elevation: null, label: null });
+                            elevationData.push({ x: totalDistance, y: lat, elevation: null, label: null });
                         }
                     }
-
-                    // Push the elevation data for the ending point
-                    elevationData.push({ x: endCoord[0], y: endCoord[1], elevation: null, label: `End (${endCoord[0]}, ${endCoord[1]})` });
                 }
             } catch (error) {
                 console.error("Failed to fetch elevation data:", error);
@@ -620,77 +639,81 @@
 
 
 
+
         ///////////////////Start Elev Profile  Chart Function\\\\\\\\\\\\\\\\\
         async function displayElevationProfile(lineString) {
-            var coordinates = lineString.getCoordinates();
-            var elevationData = await fetchElevationData(coordinates);
-            // Get the existing chart instance
-            var existingChart = Chart.getChart('chart');
+    var coordinates = lineString.getCoordinates();
+    var elevationData = await fetchElevationData(coordinates);
 
-            // Destroy the existing chart if it exists
-            if (existingChart) {
-                existingChart.destroy();
-            }
+    // Get the existing chart instance
+    var existingChart = Chart.getChart('chart');
 
-            var chartCanvas = document.getElementById('chart').getContext('2d');
-            var elevationValues = elevationData.map(data => data.elevation).filter(value => value !== null); // Filter out null values
-            var elevationChart = new Chart(chartCanvas, {
-                type: 'line',
-                data: {
-                    labels: elevationData.map(data => ''),
-                    datasets: [{
-                        label: 'Elevation Profile (meters)',
-                        data: elevationData.map(data => data.elevation),
-                        borderColor: '#ffcc33',
-                        backgroundColor: 'rgba(0, 0, 255, 0.1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    scales: {
-                        y: {
-                            scaleLabel: {
-                                display: true,
-                                labelString: 'Elevation (m)',
-                                fontSize: 20 // Increase font size for y-axis label
-                            },
-                            ticks: {
-                                fontSize: 20, // Increase font size for y-axis ticks
-                                callback: function (value, index, values) {
-                                    return value + 'm'; // Add 'm' after the numbers
-                                },
-                                suggestedMin: Math.min(...elevationValues), // Set suggested minimum based on minimum elevation value
-                                suggestedMax: Math.max(...elevationValues) // Set suggested maximum based on maximum elevation value
-                            }
+    // Destroy the existing chart if it exists
+    if (existingChart) {
+        existingChart.destroy();
+    }
+
+    var chartCanvas = document.getElementById('chart').getContext('2d');
+    var elevationValues = elevationData.map(data => data.elevation).filter(value => value !== null); // Filter out null values
+
+    var elevationChart = new Chart(chartCanvas, {
+    type: 'line',
+    data: {
+        labels: elevationData.map(data => `${data.x.toFixed(2)} m`), // Append 'm' to distance values
+        datasets: [{
+            label: 'Elevation Profile (meters)',
+            data: elevationData.map(data => data.elevation),
+            borderColor: '#ffcc33',
+            backgroundColor: 'rgba(0, 0, 255, 0.1)',
+            borderWidth: 1
+        }]
+    },
+        options: {
+            scales: {
+                y: {
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Elevation (m)',
+                        fontSize: 20 // Increase font size for y-axis label
+                    },
+                    ticks: {
+                        fontSize: 20, // Increase font size for y-axis ticks
+                        callback: function (value, index, values) {
+                            return value + 'm'; // Add 'm' after the numbers
                         },
-                        x: {
-                            scaleLabel: {
-                                display: true,
-                                labelString: 'Distance (m)',
-                                fontSize: 20 // Increase font size for x-axis label
-                            },
-                            ticks: {
-                                fontSize: 20 // Increase font size for x-axis ticks
-                            }
-                        }
+                        suggestedMin: Math.min(...elevationValues), // Set suggested minimum based on minimum elevation value
+                        suggestedMax: Math.max(...elevationValues) // Set suggested maximum based on maximum elevation value
+                    }
+                },
+                x: {
+                    scaleLabel: {
+                        display: true,
+                        labelString: 'Distance (m)',
+                        fontSize: 16 // Increase font size for x-axis label
                     },
-                    elements: {
-                        line: {
-                            tension: 0.4 // Adjust tension for smoother curve (0 to 1)
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false // Hide the legend
-                        }
+                    ticks: {
+                        fontSize: 16 // Increase font size for x-axis ticks
                     }
                 }
-            });
-
-            // Hide animation container and show chart canvas
-            document.getElementById('animation-container').style.display = 'none';
-            document.getElementById('chart').style.display = 'block';
+            },
+            elements: {
+                line: {
+                    tension: 0.4 // Adjust tension for smoother curve (0 to 1)
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false // Hide the legend
+                }
+            }
         }
+    });
+
+    // Hide animation container and show chart canvas
+    document.getElementById('animation-container').style.display = 'none';
+    document.getElementById('chart').style.display = 'block';
+}
+
     </script>
 
 </body>
