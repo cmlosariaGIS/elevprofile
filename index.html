@@ -55,6 +55,7 @@
             justify-content: center;
             align-items: center;
             border-radius: 20px 20px 0px 0px;
+
         }
 
         #elevation-text {
@@ -154,6 +155,18 @@
             margin-right: 10px;
             font-family: 'Material Icons', sans-serif;
         }
+
+
+
+        #min-elevation,
+        #max-elevation {
+            font-size: 10px;
+            display: block;
+            text-align: center;
+            margin: 0px 10px;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            color: #515151;
+        }
     </style>
 </head>
 
@@ -172,14 +185,23 @@
         </div>
         <canvas id="chart" style="display: none;"></canvas>
         <div id="animation-container" style="width: 200px; height: 200px;"></div>
+        <div id="elevation-values" style="display: flex; justify-content: space-between;">
+            <span id="min-elevation"></span>
+            <span id="max-elevation"></span>
+        </div>
         <span id="close-elevation-container" class="material-icons-outlined" style="font-size: 24px;">cancel</span>
     </div>
+
 
     <button id="finishdrawLineElevProfile" class="finish-drawLineElevProfile hidden"
         style="font-size: 18px; background-color: #386c34; color: white;">
         <span class="material-icons" style="font-size: 20px;">done_outline</span>
         Hoàn Thành
     </button>
+
+    <!--<div id="min-elevation"></div>
+    <div id="max-elevation"></div>-->
+
 
 
     <!-- <button onclick="toggleElevationContainer()">Toggle Elevation Profile</button>-->
@@ -654,6 +676,9 @@
             var chartCanvas = document.getElementById('chart').getContext('2d');
             var elevationValues = elevationData.map(data => data.elevation).filter(value => value !== null); // Filter out null values
 
+            var minElevation = Math.min(...elevationValues);
+            var maxElevation = Math.max(...elevationValues);
+
             var elevationChart = new Chart(chartCanvas, {
                 type: 'line',
                 data: {
@@ -665,8 +690,9 @@
                         label: 'height',
                         data: elevationData.map(data => data.elevation),
                         borderColor: '#ffcc33',
-                        backgroundColor: '#ffcc33',
-                        borderWidth: 2
+                        backgroundColor: 'rgba(255, 204, 51, 0.8)', // Add transparency to the background color
+                        borderWidth: 2,
+                        fill: 'start' // Fill the area below the line
                     }]
                 },
                 options: {
@@ -674,16 +700,16 @@
                         y: {
                             scaleLabel: {
                                 display: true,
-                                labelString: 'Elevation (m)',
+                                labelString: `Elevation (m) - Min: ${minElevation.toFixed(2)}m, Max: ${maxElevation.toFixed(2)}m`,
                                 fontSize: 16 // Increase font size for y-axis label
                             },
                             ticks: {
                                 fontSize: 16, // Increase font size for y-axis ticks
                                 callback: function (value, index, values) {
-                                    return value +'m'; // Add 'm' after the numbers
+                                    return value + 'm'; // Add 'm' after the numbers
                                 },
-                                suggestedMin: Math.min(...elevationValues), // Set suggested minimum based on minimum elevation value
-                                suggestedMax: Math.max(...elevationValues) // Set suggested maximum based on maximum elevation value
+                                suggestedMin: minElevation, // Set suggested minimum based on minimum elevation value
+                                suggestedMax: maxElevation // Set suggested maximum based on maximum elevation value
                             }
                         },
                         x: {
@@ -713,6 +739,10 @@
             // Hide animation container and show chart canvas
             document.getElementById('animation-container').style.display = 'none';
             document.getElementById('chart').style.display = 'block';
+
+            // Display min and max elevation values
+            document.getElementById('min-elevation').textContent = `Lowest: ${minElevation.toFixed(2)}m`;
+            document.getElementById('max-elevation').textContent = `Highest: ${maxElevation.toFixed(2)}m`;
         }
     </script>
 
