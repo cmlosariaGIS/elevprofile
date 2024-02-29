@@ -581,7 +581,7 @@
             return distance;
         }
 
-        ////////////Function to fethc elevation value from MapBox\\\\\\\\\\\\\\
+        ////////////Function to fetch elevation values from MapBox\\\\\\\\\\\\\\
         async function fetchElevationData(coordinates) {
             const elevationData = [];
             let totalDistance = 0; // Initialize total distance
@@ -638,82 +638,82 @@
 
 
 
-
-
-        ///////////////////Start Elev Profile  Chart Function\\\\\\\\\\\\\\\\\
+        ////////////Function to display elevation values and distance on a chart\\\\\\\\\\\\\\
         async function displayElevationProfile(lineString) {
-    var coordinates = lineString.getCoordinates();
-    var elevationData = await fetchElevationData(coordinates);
+            var coordinates = lineString.getCoordinates();
+            var elevationData = await fetchElevationData(coordinates);
 
-    // Get the existing chart instance
-    var existingChart = Chart.getChart('chart');
+            // Get the existing chart instance
+            var existingChart = Chart.getChart('chart');
 
-    // Destroy the existing chart if it exists
-    if (existingChart) {
-        existingChart.destroy();
-    }
-
-    var chartCanvas = document.getElementById('chart').getContext('2d');
-    var elevationValues = elevationData.map(data => data.elevation).filter(value => value !== null); // Filter out null values
-
-    var elevationChart = new Chart(chartCanvas, {
-    type: 'line',
-    data: {
-        labels: elevationData.map(data => `${data.x.toFixed(2)} m`), // Append 'm' to distance values
-        datasets: [{
-            label: 'Elevation Profile (meters)',
-            data: elevationData.map(data => data.elevation),
-            borderColor: '#ffcc33',
-            backgroundColor: 'rgba(0, 0, 255, 0.1)',
-            borderWidth: 1
-        }]
-    },
-        options: {
-            scales: {
-                y: {
-                    scaleLabel: {
-                        display: true,
-                        labelString: 'Elevation (m)',
-                        fontSize: 20 // Increase font size for y-axis label
-                    },
-                    ticks: {
-                        fontSize: 20, // Increase font size for y-axis ticks
-                        callback: function (value, index, values) {
-                            return value + 'm'; // Add 'm' after the numbers
-                        },
-                        suggestedMin: Math.min(...elevationValues), // Set suggested minimum based on minimum elevation value
-                        suggestedMax: Math.max(...elevationValues) // Set suggested maximum based on maximum elevation value
-                    }
-                },
-                x: {
-                    scaleLabel: {
-                        display: true,
-                        labelString: 'Distance (m)',
-                        fontSize: 16 // Increase font size for x-axis label
-                    },
-                    ticks: {
-                        fontSize: 16 // Increase font size for x-axis ticks
-                    }
-                }
-            },
-            elements: {
-                line: {
-                    tension: 0.4 // Adjust tension for smoother curve (0 to 1)
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false // Hide the legend
-                }
+            // Destroy the existing chart if it exists
+            if (existingChart) {
+                existingChart.destroy();
             }
+
+            var chartCanvas = document.getElementById('chart').getContext('2d');
+            var elevationValues = elevationData.map(data => data.elevation).filter(value => value !== null); // Filter out null values
+
+            var elevationChart = new Chart(chartCanvas, {
+                type: 'line',
+                data: {
+                    labels: elevationData.map(data => {
+                        let distance = data.x;
+                        return distance < 1000 ? `${distance.toFixed(2)}m` : `${(distance / 1000).toFixed(2)}km`;
+                    }), // Use distance values as labels and convert to km if distance > 1000
+                    datasets: [{
+                        label: 'height',
+                        data: elevationData.map(data => data.elevation),
+                        borderColor: '#ffcc33',
+                        backgroundColor: '#ffcc33',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: {
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Elevation (m)',
+                                fontSize: 16 // Increase font size for y-axis label
+                            },
+                            ticks: {
+                                fontSize: 16, // Increase font size for y-axis ticks
+                                callback: function (value, index, values) {
+                                    return value +'m'; // Add 'm' after the numbers
+                                },
+                                suggestedMin: Math.min(...elevationValues), // Set suggested minimum based on minimum elevation value
+                                suggestedMax: Math.max(...elevationValues) // Set suggested maximum based on maximum elevation value
+                            }
+                        },
+                        x: {
+                            scaleLabel: {
+                                display: true,
+                                labelString: 'Distance(m)',
+                                fontSize: 16 // Increase font size for x-axis label
+                            },
+                            ticks: {
+                                fontSize: 16 // Increase font size for x-axis ticks
+                            }
+                        }
+                    },
+                    elements: {
+                        line: {
+                            tension: 0.5 // Adjust tension for smoother curve (0 to 1)
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false // Hide the legend
+                        }
+                    }
+                }
+            });
+
+            // Hide animation container and show chart canvas
+            document.getElementById('animation-container').style.display = 'none';
+            document.getElementById('chart').style.display = 'block';
         }
-    });
-
-    // Hide animation container and show chart canvas
-    document.getElementById('animation-container').style.display = 'none';
-    document.getElementById('chart').style.display = 'block';
-}
-
     </script>
 
 </body>
