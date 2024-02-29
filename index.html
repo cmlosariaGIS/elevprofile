@@ -433,82 +433,102 @@
 `;
                     document.head.appendChild(style);
 
+                    // Update length dynamically based on mouse move or touch move
+                    function updateLength() {
+                        // Calculate the length of the drawn line
+                        var drawnGeometry = drawnFeature.getGeometry();
+                        var length = ol.sphere.getLength(drawnGeometry, { projection: 'EPSG:3857' });
+
+                        // Convert to kilometers if length exceeds 1000 meters
+                        var lengthText = '';
+                        if (length > 1000) {
+                            lengthText = (length / 1000).toFixed(2) + ' km';
+                        } else {
+                            lengthText = length.toFixed(2) + ' m';
+                        }
+
+                        // Use the "straighten" icon as content
+                        lengthContainer.innerHTML = '<span class="material-icons-outlined" style="display: inline-block; vertical-align: middle; margin-right: 5px;">straighten</span>' + lengthText;
+                    }
+
                     // Update length on mouse move (dynamically)
                     map.on('pointermove', updateLength);
 
+                    // Update length on touch move (dynamically)
+                    map.on('touchmove', updateLength);
+
                     // Event listener for drawing end event
                     draw.on('drawend', function (event) {
-                        // Remove the dynamic length update listener
+                        // Remove the dynamic length update listeners
                         map.un('pointermove', updateLength);
+                        map.un('touchmove', updateLength);
                     });
 
-                });
-
-                ///////////////////End Mesasure Length Elevation Profile function\\\\\\\\\\\\\\\\\\\\\\\\\\
+                    ///////////////////End Mesasure Length Elevation Profile function\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 
 
 
-                // Event listener to handle drawing completion
-                draw.on('drawend', function (event) {
-                    var lineString = event.feature.getGeometry();
-                    displayElevationProfile(lineString);
-                    openElevationContainer(); // Automatically open the elevation container when drawing is complete
-                });
+                    // Event listener to handle drawing completion
+                    draw.on('drawend', function (event) {
+                        var lineString = event.feature.getGeometry();
+                        displayElevationProfile(lineString);
+                        openElevationContainer(); // Automatically open the elevation container when drawing is complete
+                    });
 
-                // Set length container if not already set
-                if (!lengthContainer) {
-                    lengthContainer = document.getElementById('elevProfileMeasureLength-container');
-                }
-
-                // Show length container
-                if (lengthContainer) {
-                    lengthContainer.style.display = 'block';
-                }
-
-                // Change button icon to 'close'
-                var btnIcon = document.getElementById('elevProfileBtn').querySelector('i.material-icons');
-                btnIcon.textContent = 'close';
-
-                // Mark elevation profile button as active
-                document.getElementById('elevProfileBtn').classList.add('active');
-                isElevationProfileActive = true;
-
-                // Set drawing activation flag to true
-                isDrawingActivated = true;
-
-                // Reset the click counter
-                clickCounter = 0;
-
-                // Hide or remove the button after it's clicked
-                document.getElementById('finishdrawLineElevProfile').style.display = 'none';
-
-            } else {
-                // Disable draw interaction
-                map.removeLayer(drawLineElevProfile);
-                drawLineElevProfile = null;
-
-                // Remove draw interaction
-                map.getInteractions().forEach(function (interaction) {
-                    if (interaction instanceof ol.interaction.Draw) {
-                        map.removeInteraction(interaction);
+                    // Set length container if not already set
+                    if (!lengthContainer) {
+                        lengthContainer = document.getElementById('elevProfileMeasureLength-container');
                     }
-                });
 
-                // Hide the chart container
-                document.getElementById('chart').style.display = 'none';
+                    // Show length container
+                    if (lengthContainer) {
+                        lengthContainer.style.display = 'block';
+                    }
 
-                // Dismiss the elevation container
-                var elevationContainer = document.getElementById('elevation-container');
-                elevationContainer.classList.remove('open');
+                    // Change button icon to 'close'
+                    var btnIcon = document.getElementById('elevProfileBtn').querySelector('i.material-icons');
+                    btnIcon.textContent = 'close';
+
+                    // Mark elevation profile button as active
+                    document.getElementById('elevProfileBtn').classList.add('active');
+                    isElevationProfileActive = true;
+
+                    // Set drawing activation flag to true
+                    isDrawingActivated = true;
+
+                    // Reset the click counter
+                    clickCounter = 0;
+
+                    // Hide or remove the button after it's clicked
+                    document.getElementById('finishdrawLineElevProfile').style.display = 'none';
+
+                } else {
+                    // Disable draw interaction
+                    map.removeLayer(drawLineElevProfile);
+                    drawLineElevProfile = null;
+
+                    // Remove draw interaction
+                    map.getInteractions().forEach(function (interaction) {
+                        if (interaction instanceof ol.interaction.Draw) {
+                            map.removeInteraction(interaction);
+                        }
+                    });
+
+                    // Hide the chart container
+                    document.getElementById('chart').style.display = 'none';
+
+                    // Dismiss the elevation container
+                    var elevationContainer = document.getElementById('elevation-container');
+                    elevationContainer.classList.remove('open');
 
 
-                // Dismiss the length container
-                dismissLengthContainer();
+                    // Dismiss the length container
+                    dismissLengthContainer();
 
                 function dismissLengthContainer() {
                     var lengthContainer = document.getElementById('elevProfileMeasureLength-container');
-                    if (lengthContainer) {
+                    if(lengthContainer) {
                         lengthContainer.style.display = 'none';
                         lengthContainer.innerHTML = ''; // Clear the content of the container
                         lengthContainer.remove(); // Remove the container from the DOM
