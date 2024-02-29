@@ -270,7 +270,7 @@
                 var center = ol.extent.getCenter(extent);
 
                 // Adjust the center to move the extent to the top half of the screen
-                center[1] -= (elevationContainerHeight + topMargin + 30) * map.getView().getResolution(); // Adjusted by adding 0
+                center[1] -= (elevationContainerHeight + topMargin + 30) * map.getView().getResolution(); // Adjusted by adding 30
 
                 // Set the new center and zoom to ensure the drawn line is visible
                 map.getView().setCenter(center);
@@ -345,6 +345,74 @@
                 });
                 map.addInteraction(draw);
 
+                // Create a vector layer to display the drawn line
+                var drawnLineLayer = new ol.layer.Vector({
+                    source: new ol.source.Vector()
+                });
+                map.addLayer(drawnLineLayer);
+
+                // Variable to store the drawn feature
+                var drawnFeature;
+
+                // Event listener for drawing start event
+                draw.on('drawstart', function (event) {
+                    // Get the drawn feature
+                    drawnFeature = event.feature;
+
+
+
+                    // Create or update the elevProfileMeasureLength pill display container
+                    var lengthContainer = document.getElementById('elevProfileMeasureLength-container');
+                    if (!lengthContainer) {
+                        lengthContainer = document.createElement('div');
+                        lengthContainer.id = 'elevProfileMeasureLength-container';
+                        lengthContainer.style.position = 'absolute';
+                        lengthContainer.style.top = '50px';
+                        lengthContainer.style.left = '50%';
+                        lengthContainer.style.transform = 'translateX(-50%)'; // Center horizontally
+                        lengthContainer.style.padding = '8px';
+                        lengthContainer.style.background = '#fff';
+                        lengthContainer.style.border = '1px solid #ccc';
+                        lengthContainer.style.borderRadius = '40px';
+                        lengthContainer.style.fontSize = '14px';
+                        lengthContainer.style.boxShadow = '0px 2px 4px rgba(0, 0, 0, 0.1)';
+                        document.body.appendChild(lengthContainer);
+                    }
+
+                    // Function to update the length dynamically
+                    function updateLength() {
+                        // Calculate the length of the drawn line
+                        var drawnGeometry = drawnFeature.getGeometry();
+                        var length = ol.sphere.getLength(drawnGeometry, { projection: 'EPSG:3857' });
+
+                        // Convert to kilometers if length exceeds 1000 meters
+                        var lengthText = '';
+                        if (length > 1000) {
+                            lengthText = (length / 1000).toFixed(2) + ' km';
+                        } else {
+                            lengthText = length.toFixed(2) + ' m';
+                        }
+
+                        // Use the "straighten" icon as content
+                        lengthContainer.innerHTML = '<span class="material-icons-outlined" style="display: inline-block; vertical-align: middle; margin-right: 5px;">straighten</span>' + lengthText;
+                    }
+
+                    // Call the updateLength function initially and whenever the draw interaction changes
+                    draw.on('drawstart', updateLength);
+                    draw.on('drawend', updateLength);
+
+
+                    // Update length on mouse move (dynamically)
+                    map.on('pointermove', updateLength);
+
+                    // Event listener for drawing end event
+                    draw.on('drawend', function (event) {
+                        // Remove the dynamic length update listener
+                        map.un('pointermove', updateLength);
+                    });
+
+                });
+
                 // Event listener to handle drawing completion
                 draw.on('drawend', function (event) {
                     var lineString = event.feature.getGeometry();
@@ -403,8 +471,8 @@
             }
         });
 
+        //Fetching elevation data
         async function fetchElevationData(coordinates) {
-            //const accessToken = 'pk.eyJ1IjoiY21sb3NhcmlhIiwiYSI6ImNsZGJ4cHp2ajAwMGszb3FmeXpxYmVpMHkifQ.3wsPFc9FkszxcH27eEq2dw';
             const elevationData = [];
 
             try {
@@ -412,35 +480,42 @@
                     const startCoord = ol.proj.transform(coordinates[i], 'EPSG:3857', 'EPSG:4326');
                     const endCoord = ol.proj.transform(coordinates[i + 1], 'EPSG:3857', 'EPSG:4326');
 
-                    // Calculate number of points to interpolate between start and end coordinates
-                    const numPoints = 30; // Increased number of points
+                    const numPoints = 30; // Interpolate 30 points between each pair of coordinates to get more detailed elevation data
+
+                    // Push the elevation data for the starting point
+                    elevationData.push({ x: startCoord[0], y: startCoord[1], elevation: null, label: `Start (${startCoord[0]}, ${startCoord[1]})` });
 
                     for (let j = 0; j <= numPoints; j++) {
                         const lng = startCoord[0] + (endCoord[0] - startCoord[0]) * (j / numPoints);
                         const lat = startCoord[1] + (endCoord[1] - startCoord[1]) * (j / numPoints);
 
-                        //const url = `https://api.mapbox.com/v4/mapbox.mapbox-terrain-v2/tilequery/${lng},${lat}.json?layers=contour&access_token=${accessToken}`;
                         const url = `https://api.mapbox.com/v4/mapbox.mapbox-terrain-v2/tilequery/${lng},${lat}.json?layers=contour&limit=50&access_token=pk.eyJ1IjoiY21sb3NhcmlhIiwiYSI6ImNsZGJ4cHp2ajAwMGszb3FmeXpxYmVpMHkifQ.3wsPFc9FkszxcH27eEq2dw`;
                         const response = await fetch(url);
+
                         if (response.ok) {
                             const data = await response.json();
                             if (data.features && data.features.length > 0) {
-                                // Use all features to calculate elevation
                                 let totalElevation = 0;
                                 for (let feature of data.features) {
                                     totalElevation += feature.properties.ele;
                                 }
                                 const avgElevation = totalElevation / data.features.length;
-                                elevationData.push({ x: lng, y: lat, elevation: avgElevation });
+                                elevationData.push({ x: lng, y: lat, elevation: avgElevation, label: null });
+
+                                // Log elevation value for debugging
+                                console.log(`Elevation at (${lng}, ${lat}): ${avgElevation}`);
                             } else {
                                 console.error("No elevation data found for point:", lng, lat);
-                                elevationData.push({ x: lng, y: lat, elevation: null }); // Push null for missing elevation data
+                                elevationData.push({ x: lng, y: lat, elevation: null, label: null });
                             }
                         } else {
                             console.error("Failed to fetch elevation data:", response.status, response.statusText);
-                            elevationData.push({ x: lng, y: lat, elevation: null }); // Push null for failed requests
+                            elevationData.push({ x: lng, y: lat, elevation: null, label: null });
                         }
                     }
+
+                    // Push the elevation data for the ending point
+                    elevationData.push({ x: endCoord[0], y: endCoord[1], elevation: null, label: `End (${endCoord[0]}, ${endCoord[1]})` });
                 }
             } catch (error) {
                 console.error("Failed to fetch elevation data:", error);
@@ -449,9 +524,14 @@
             return elevationData;
         }
 
+
+
+
         async function displayElevationProfile(lineString) {
             var coordinates = lineString.getCoordinates();
             var elevationData = await fetchElevationData(coordinates);
+
+
 
             // Get the existing chart instance
             var existingChart = Chart.getChart('chart');
@@ -462,6 +542,7 @@
             }
 
             var chartCanvas = document.getElementById('chart').getContext('2d');
+            var elevationValues = elevationData.map(data => data.elevation).filter(value => value !== null); // Filter out null values
             var elevationChart = new Chart(chartCanvas, {
                 type: 'line',
                 data: {
@@ -486,7 +567,9 @@
                                 fontSize: 20, // Increase font size for y-axis ticks
                                 callback: function (value, index, values) {
                                     return value + 'm'; // Add 'm' after the numbers
-                                }
+                                },
+                                suggestedMin: Math.min(...elevationValues), // Set suggested minimum based on minimum elevation value
+                                suggestedMax: Math.max(...elevationValues) // Set suggested maximum based on maximum elevation value
                             }
                         },
                         x: {
