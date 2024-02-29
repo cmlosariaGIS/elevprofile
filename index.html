@@ -502,8 +502,18 @@
                 var elevationContainer = document.getElementById('elevation-container');
                 elevationContainer.classList.remove('open');
 
+
                 // Dismiss the length container
                 dismissLengthContainer();
+
+                function dismissLengthContainer() {
+                    var lengthContainer = document.getElementById('elevProfileMeasureLength-container');
+                    if (lengthContainer) {
+                        lengthContainer.style.display = 'none';
+                        lengthContainer.innerHTML = ''; // Clear the content of the container
+                        lengthContainer.remove(); // Remove the container from the DOM
+                    }
+                }
 
                 // Reset the click counter
                 clickCounter = 0;
@@ -522,22 +532,12 @@
                 // Set drawing activation flag to false when deactivating elevation profile
                 isDrawingActivated = false;
 
-                // Dismiss the length container
-                dismissLengthContainer();
-
-                function dismissLengthContainer() {
-                    var lengthContainer = document.getElementById('elevProfileMeasureLength-container');
-                    if (lengthContainer) {
-                        lengthContainer.style.display = 'none';
-                    }
-                }
-
 
 
             }
         });
 
-        
+
         //Fetching elevation data
         async function fetchElevationData(coordinates) {
             const elevationData = [];
