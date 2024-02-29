@@ -213,11 +213,13 @@
         var isElevationProfileActive = false;
         var clickCounter = 0;
         var isDrawingActivated = false; // Variable to track if drawing is activated
+        var lengthContainer;
 
-        // Function to toggle elevation container
-        function toggleElevationContainer() {
-            var elevationContainer = document.getElementById('elevation-container');
-            elevationContainer.classList.toggle('open');
+        // Function to dismiss the length container
+        function dismissLengthContainer() {
+            if (lengthContainer) {
+                lengthContainer.style.display = 'none';
+            }
         }
 
         // Function to open elevation container
@@ -241,7 +243,14 @@
             });
         }
 
-        // Event listener to close the elevation container when the close icon is clicked
+        // Function to dismiss the length container
+        function dismissLengthContainer() {
+            if (lengthContainer) {
+                lengthContainer.style.display = 'none';
+            }
+        }
+
+        // Event listener to close the elevation container when the x close icon is clicked
         document.getElementById('close-elevation-container').addEventListener('click', function () {
             var elevationContainer = document.getElementById('elevation-container');
             elevationContainer.classList.remove('open');
@@ -317,7 +326,6 @@
         document.getElementById('elevProfileBtn').addEventListener('click', function () {
             if (!isElevationProfileActive) {
                 // Enable draw interaction
-                // Add draw interaction only when the elevation profile button is clicked
                 drawLineElevProfile = new ol.layer.Vector({
                     source: new ol.source.Vector(),
                     style: new ol.style.Style({
@@ -361,13 +369,18 @@
 
 
 
+
+
+
+                    //////////Start Mesasure Length Elevation Profile function\\\\\\\\\\
+
                     // Create or update the elevProfileMeasureLength pill display container
                     var lengthContainer = document.getElementById('elevProfileMeasureLength-container');
                     if (!lengthContainer) {
                         lengthContainer = document.createElement('div');
                         lengthContainer.id = 'elevProfileMeasureLength-container';
                         lengthContainer.style.position = 'absolute';
-                        lengthContainer.style.top = '50px';
+                        lengthContainer.style.top = '-50px'; // Start from above the viewport
                         lengthContainer.style.left = '50%';
                         lengthContainer.style.transform = 'translateX(-50%)'; // Center horizontally
                         lengthContainer.style.padding = '8px';
@@ -377,6 +390,9 @@
                         lengthContainer.style.fontSize = '14px';
                         lengthContainer.style.boxShadow = '0px 2px 4px rgba(0, 0, 0, 0.1)';
                         document.body.appendChild(lengthContainer);
+
+                        // Apply slide-from-top animation
+                        lengthContainer.style.animation = 'slideFromTop 0.5s forwards';
                     }
 
                     // Function to update the length dynamically
@@ -401,6 +417,21 @@
                     draw.on('drawstart', updateLength);
                     draw.on('drawend', updateLength);
 
+                    // Add CSS animation keyframes for slide-from-top effect
+                    var style = document.createElement('style');
+                    style.innerHTML = `
+    @keyframes slideFromTop {
+        from {
+            top: -50px; /* Start position above the viewport */
+            opacity: 0; /* Start invisible */
+        }
+        to {
+            top: 50px; /* End position */
+            opacity: 1; /* Fade in */
+        }
+    }
+`;
+                    document.head.appendChild(style);
 
                     // Update length on mouse move (dynamically)
                     map.on('pointermove', updateLength);
@@ -413,12 +444,27 @@
 
                 });
 
+                ///////////////////End Mesasure Length Elevation Profile function\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+
+
+
                 // Event listener to handle drawing completion
                 draw.on('drawend', function (event) {
                     var lineString = event.feature.getGeometry();
                     displayElevationProfile(lineString);
                     openElevationContainer(); // Automatically open the elevation container when drawing is complete
                 });
+
+                // Set length container if not already set
+                if (!lengthContainer) {
+                    lengthContainer = document.getElementById('elevProfileMeasureLength-container');
+                }
+
+                // Show length container
+                if (lengthContainer) {
+                    lengthContainer.style.display = 'block';
+                }
 
                 // Change button icon to 'close'
                 var btnIcon = document.getElementById('elevProfileBtn').querySelector('i.material-icons');
@@ -432,7 +478,11 @@
                 isDrawingActivated = true;
 
                 // Reset the click counter
-                resetClickCounter();
+                clickCounter = 0;
+
+                // Hide or remove the button after it's clicked
+                document.getElementById('finishdrawLineElevProfile').style.display = 'none';
+
             } else {
                 // Disable draw interaction
                 map.removeLayer(drawLineElevProfile);
@@ -452,8 +502,11 @@
                 var elevationContainer = document.getElementById('elevation-container');
                 elevationContainer.classList.remove('open');
 
+                // Dismiss the length container
+                dismissLengthContainer();
+
                 // Reset the click counter
-                resetClickCounter();
+                clickCounter = 0;
 
                 // Display the finishdrawLineElevProfile button
                 document.getElementById('finishdrawLineElevProfile').style.display = 'none';
@@ -468,9 +521,23 @@
 
                 // Set drawing activation flag to false when deactivating elevation profile
                 isDrawingActivated = false;
+
+                // Dismiss the length container
+                dismissLengthContainer();
+
+                function dismissLengthContainer() {
+                    var lengthContainer = document.getElementById('elevProfileMeasureLength-container');
+                    if (lengthContainer) {
+                        lengthContainer.style.display = 'none';
+                    }
+                }
+
+
+
             }
         });
 
+        
         //Fetching elevation data
         async function fetchElevationData(coordinates) {
             const elevationData = [];
@@ -527,12 +594,10 @@
 
 
 
+        ///////////////////Start Elev Profile  Chart Function\\\\\\\\\\\\\\\\\
         async function displayElevationProfile(lineString) {
             var coordinates = lineString.getCoordinates();
             var elevationData = await fetchElevationData(coordinates);
-
-
-
             // Get the existing chart instance
             var existingChart = Chart.getChart('chart');
 
