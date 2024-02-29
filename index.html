@@ -433,7 +433,7 @@
 `;
                     document.head.appendChild(style);
 
-                    // Update length dynamically based on mouse move or touch move
+                    // Update length dynamically based on mouse move or touch move or map click
                     function updateLength() {
                         // Calculate the length of the drawn line
                         var drawnGeometry = drawnFeature.getGeometry();
@@ -457,11 +457,15 @@
                     // Update length on touch move (dynamically)
                     map.on('touchmove', updateLength);
 
+                    // Update length on map click (dynamically)
+                    map.on('click', updateLength);
+
                     // Event listener for drawing end event
                     draw.on('drawend', function (event) {
                         // Remove the dynamic length update listeners
                         map.un('pointermove', updateLength);
                         map.un('touchmove', updateLength);
+                        map.un('click', updateLength);
                     });
 
                 });
