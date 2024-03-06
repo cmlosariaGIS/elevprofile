@@ -20,6 +20,10 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
 
+    <!--Mapbox-->
+    <script src="https://api.tiles.mapbox.com/mapbox-gl-js/v3.1.0/mapbox-gl.js"></script>
+    <link href="https://api.tiles.mapbox.com/mapbox-gl-js/v3.1.0/mapbox-gl.css" rel="stylesheet">
+
 
 
 
@@ -167,6 +171,70 @@
             font-family: 'Be Vietnam Pro', sans-serif;
             color: #515151;
         }
+
+
+        /***** START CURRENT ACTIVITY FLOATING TITLE ******/
+
+        .generateElevationProfilefloatingTitle {
+            position: fixed;
+            top: -100px;
+            /* Start off-screen */
+            left: 50%;
+            width: fit-content;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            background-color: #ffffffc0;
+            border-radius: 50px;
+            padding: 10px 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            z-index: 2;
+            animation: slideDownUp 5s forwards;
+        }
+
+        @keyframes slideDownUp {
+            0% {
+                top: -100px;
+                /* Start off-screen */
+            }
+
+            5% {
+                top: 25px;
+                /* Slide down to this position */
+            }
+
+            95% {
+                top: 25px;
+                /* Stay at this position for 10 seconds */
+            }
+
+            100% {
+                top: -100px;
+                /* Slide back up to off-screen */
+            }
+        }
+
+        .generateElevationProfileTitle {
+            font-size: 14px;
+            color: #515151;
+
+        }
+
+        .generateElevationProfilefloatingTitle {
+            display: none;
+        }
+
+        /***** END CURRENT ACTIVITY FLOATING TITLE ******/
+
+        .pointElevMap-Label {
+            position: absolute;
+            background-color: rgba(255, 225, 0, 0.8);
+            border: 1px solid #ccc;
+            padding: 5px;
+            border-radius: 40px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            /*z-index: 9999;*/
+        }
     </style>
 </head>
 
@@ -174,12 +242,22 @@
     <!--<h1>OpenLayers Elevation Profile</h1>-->
     <div id="map"></div>
 
+    <!------------------------------------------------///// Current Tool Activated Floating Message \\\\\--------------------------------------------------------------->
+
+    <div class="generateElevationProfilefloatingTitle">
+        <i class="material-icons" style="font-size: 30px; padding-right: 5px; color: #515151;">landscape</i>
+        <span class="generateElevationProfileTitle">Đo chiều cao</span> <!-- Generate Elevation Profile -->
+    </div>
+
+
     <button id="elevProfileBtn">
         <i class="material-icons">landscape</i>
     </button>
 
     <div id="elevation-container">
         <div id="icon-elevation-container">
+            <span class="material-icons-outlined"
+                style="font-size: 15px; margin-right: -5px; vertical-align: middle;">trending_up</span>
             <span class="material-icons-outlined" style="font-size: 30px;">landscape</span>
             <div id="elevation-text">Elevation Profile</div>
         </div>
@@ -192,26 +270,15 @@
         <span id="close-elevation-container" class="material-icons-outlined" style="font-size: 24px;">cancel</span>
     </div>
 
-
     <button id="finishdrawLineElevProfile" class="finish-drawLineElevProfile hidden"
         style="font-size: 18px; background-color: #386c34; color: white;">
         <span class="material-icons" style="font-size: 20px;">done_outline</span>
         Hoàn Thành
     </button>
 
-    <!--<div id="min-elevation"></div>
-    <div id="max-elevation"></div>-->
-
-
-
-    <!-- <button onclick="toggleElevationContainer()">Toggle Elevation Profile</button>-->
-
-
-
-
     <script>
         // Initialize the map
-        var map = new ol.Map({
+        /*var map = new ol.Map({
             target: 'map',
             layers: [
                 new ol.layer.Tile({
@@ -225,7 +292,27 @@
                 center: ol.proj.fromLonLat([108.0378392, 12.348229]),
                 zoom: 15
             })
+        });*/
+
+
+        // Initialize the map
+        var map = new ol.Map({
+            target: 'map',
+            layers: [
+                new ol.layer.Tile({
+                    source: new ol.source.XYZ({
+                        url: 'https://api.mapbox.com/styles/v1/mapbox/outdoors-v12/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoiY21sb3NhcmlhIiwiYSI6ImNsZGJ4cHp2ajAwMGszb3FmeXpxYmVpMHkifQ.3wsPFc9FkszxcH27eEq2dw',
+                        attributions: '<a href="https://www.mapbox.com/about/maps/">© Mapbox</a>, <a href="http://www.openstreetmap.org/about/">© OpenStreetMap</a>'
+                    })
+                })
+            ],
+            view: new ol.View({
+                center: ol.proj.fromLonLat([108.0378392, 12.348229]),
+                zoom: 15
+            })
         });
+
+
 
         // Hide the button on map load
         document.getElementById('finishdrawLineElevProfile').style.display = 'none';
@@ -344,10 +431,80 @@
             document.getElementById('finishdrawLineElevProfile').style.display = 'none';
         }
 
+
         // Event listener for the elevation profile button
         document.getElementById('elevProfileBtn').addEventListener('click', function () {
             if (!isElevationProfileActive) {
-                // Enable draw interaction
+
+                // Event listener for the map click event (elevation point)
+                map.on('click', function (event) {
+                    // Check if elevation profile is active
+                    if (isElevationProfileActive) {
+                        // Get the coordinate of the clicked point
+                        var clickedCoord = event.coordinate;
+
+                        // Convert coordinate from EPSG:3857 to EPSG:4326
+                        var lonLatCoord = ol.proj.transform(clickedCoord, 'EPSG:3857', 'EPSG:4326');
+
+                        // Fetch elevation data from Mapbox API
+                        var [lon, lat] = ol.proj.toLonLat(clickedCoord);
+                        var url = `https://api.mapbox.com/v4/mapbox.mapbox-terrain-v2/tilequery/${lon},${lat}.json?layers=contour&limit=50&access_token=pk.eyJ1IjoiY21sb3NhcmlhIiwiYSI6ImNsZGJ4cHp2ajAwMGszb3FmeXpxYmVpMHkifQ.3wsPFc9FkszxcH27eEq2dw`;
+
+                        //Fetches an array of elevation values from the API and get the max value
+                        fetch(url)
+                            .then(response => response.json())
+                            .then(data => {
+                                // Extract elevation values from response
+                                var elevations = data.features.map(feature => feature.properties.ele);
+
+                                // Find the maximum elevation
+                                var maxElevation = Math.max(...elevations);
+
+                                // Log elevation value to console
+                                console.log('Maximum Elevation:', maxElevation);
+                                console.log('Clicked Coordinates:', lonLatCoord); // Logging clicked coordinates
+
+                                // Create a point feature
+                                var pointFeature = new ol.Feature({
+                                    geometry: new ol.geom.Point(clickedCoord)
+                                });
+
+                                // Create a circle style for the point
+                                var circleStyle = new ol.style.Style({
+                                    image: new ol.style.Circle({
+                                        radius: 5,
+                                        fill: new ol.style.Fill({ color: '#ffcc33' }), // Set circle fill color
+                                        stroke: new ol.style.Stroke({ color: '#ffcc55', width: 10 }) // Set circle stroke
+                                    })
+                                });
+
+                                // Create a text style for the label
+                                var textStyle = new ol.style.Text({
+                                    text: maxElevation + 'm',
+                                    fill: new ol.style.Fill({ color: '#fff' }), // Set text fill color to white
+                                    font: 'bold 12px Arial', // Apply bold font
+                                    backgroundFill: new ol.style.Fill({ color: 'rgba(0, 0, 0, 0.6)' }), // Add background pill
+                                    padding: [2, 4, 2, 4], // Add padding inside the pill
+                                    offsetX: 10, // Adjust the label's position relative to the point (move right)
+                                    offsetY: -10, // Adjust the label's position relative to the point (move up)
+                                    textAlign: 'left', // Align text to left
+                                    textBaseline: 'bottom' // Align text to bottom
+                                });
+
+                                // Apply the styles to the point feature
+                                pointFeature.setStyle([circleStyle, new ol.style.Style({ text: textStyle })]);
+
+                                // Add the point feature to the vector layer
+                                drawLineElevProfile.getSource().addFeature(pointFeature);
+                            })
+                            .catch(error => {
+                                console.error('Error fetching elevation data:', error);
+                            });
+                    }
+                });
+
+
+                // Enable draw elevation measure line interaction
                 drawLineElevProfile = new ol.layer.Vector({
                     source: new ol.source.Vector(),
                     style: new ol.style.Style({
@@ -384,18 +541,17 @@
                 // Variable to store the drawn feature
                 var drawnFeature;
 
+                // Display floating title
+                document.querySelector('.generateElevationProfilefloatingTitle').style.display = 'block';
+
+
                 // Event listener for drawing start event
                 draw.on('drawstart', function (event) {
                     // Get the drawn feature
                     drawnFeature = event.feature;
 
 
-
-
-
-
                     //////////Start Mesasure Length Elevation Profile function\\\\\\\\\\
-
                     // Create or update the elevProfileMeasureLength pill display container
                     var lengthContainer = document.getElementById('elevProfileMeasureLength-container');
                     if (!lengthContainer) {
@@ -495,8 +651,6 @@
                 ///////////////////End Mesasure Length Elevation Profile function\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 
-
-
                 // Event listener to handle drawing completion
                 draw.on('drawend', function (event) {
                     var lineString = event.feature.getGeometry();
@@ -546,9 +700,19 @@
                 // Hide the chart container
                 document.getElementById('chart').style.display = 'none';
 
+
+                // Hide the elements related to min and max elevation text display
+                document.getElementById('min-elevation').style.display = 'none';
+                document.getElementById('max-elevation').style.display = 'none';
+
+
+
                 // Dismiss the elevation container
                 var elevationContainer = document.getElementById('elevation-container');
                 elevationContainer.classList.remove('open');
+
+                // Hide floating title
+                document.querySelector('.generateElevationProfilefloatingTitle').style.display = 'none';
 
 
                 // Dismiss the length container
@@ -586,7 +750,6 @@
         });
 
 
-
         ////////////Function to calculate distance between two points using Haversine formula\\\\\\\\\\
         function calculateDistance(lat1, lon1, lat2, lon2) {
             const earthRadius = 6371; // Radius of the Earth in kilometers
@@ -616,38 +779,40 @@
                     const numPoints = 30; // Interpolate 30 points between each pair of coordinates to get more detailed elevation data
 
                     for (let j = 0; j <= numPoints; j++) {
-                        const lng = startCoord[0] + (endCoord[0] - startCoord[0]) * (j / numPoints);
+                        const lon = startCoord[0] + (endCoord[0] - startCoord[0]) * (j / numPoints);
                         const lat = startCoord[1] + (endCoord[1] - startCoord[1]) * (j / numPoints);
 
-                        const url = `https://api.mapbox.com/v4/mapbox.mapbox-terrain-v2/tilequery/${lng},${lat}.json?layers=contour&limit=50&access_token=pk.eyJ1IjoiY21sb3NhcmlhIiwiYSI6ImNsZGJ4cHp2ajAwMGszb3FmeXpxYmVpMHkifQ.3wsPFc9FkszxcH27eEq2dw`;
+                        const url = `https://api.mapbox.com/v4/mapbox.mapbox-terrain-v2/tilequery/${lon},${lat}.json?layers=contour&limit=50&access_token=pk.eyJ1IjoiY21sb3NhcmlhIiwiYSI6ImNsZGJ4cHp2ajAwMGszb3FmeXpxYmVpMHkifQ.3wsPFc9FkszxcH27eEq2dw`;
                         const response = await fetch(url);
 
+                        
+                        //Fetches an array of elevation values from the API and get the max value
                         if (response.ok) {
                             const data = await response.json();
                             if (data.features && data.features.length > 0) {
-                                let totalElevation = 0;
+                                let maxElevation = -Infinity; // Initialize max elevation
+
                                 for (let feature of data.features) {
-                                    totalElevation += feature.properties.ele;
+                                    maxElevation = Math.max(maxElevation, feature.properties.ele);
                                 }
-                                const avgElevation = totalElevation / data.features.length;
 
                                 // Calculate distance from the first point
                                 if (i > 0 || j > 0) {
                                     const firstCoord = ol.proj.transform(coordinates[0], 'EPSG:3857', 'EPSG:4326');
-                                    totalDistance = calculateDistance(firstCoord[1], firstCoord[0], lat, lng);
+                                    totalDistance = calculateDistance(firstCoord[1], firstCoord[0], lat, lon);
                                 }
 
-                                elevationData.push({ x: totalDistance, y: lat, elevation: avgElevation, label: null });
+                                elevationData.push({ x: totalDistance, y: lat, maxElevation, label: null });
 
                                 // Log elevation value for debugging
-                                console.log(`Elevation at (${lng}, ${lat}): ${avgElevation}, Distance: ${totalDistance}`);
+                                console.log(`Max Elevation at (${lon}, ${lat}): ${maxElevation}, Distance: ${totalDistance}`);
                             } else {
-                                console.error("No elevation data found for point:", lng, lat);
-                                elevationData.push({ x: totalDistance, y: lat, elevation: null, label: null });
+                                console.error("No elevation data found for point:", lon, lat);
+                                elevationData.push({ x: totalDistance, y: lat, maxElevation: null, label: null });
                             }
                         } else {
                             console.error("Failed to fetch elevation data:", response.status, response.statusText);
-                            elevationData.push({ x: totalDistance, y: lat, elevation: null, label: null });
+                            elevationData.push({ x: totalDistance, y: lat, maxElevation: null, label: null });
                         }
                     }
                 }
@@ -659,8 +824,7 @@
         }
 
 
-
-        ////////////Function to display elevation values and distance on a chart\\\\\\\\\\\\\\
+        ////////////Function to display elevation values and distance on a line chart\\\\\\\\\\\\\\
         async function displayElevationProfile(lineString) {
             var coordinates = lineString.getCoordinates();
             var elevationData = await fetchElevationData(coordinates);
@@ -674,10 +838,9 @@
             }
 
             var chartCanvas = document.getElementById('chart').getContext('2d');
-            var elevationValues = elevationData.map(data => data.elevation).filter(value => value !== null); // Filter out null values
 
-            var minElevation = Math.min(...elevationValues);
-            var maxElevation = Math.max(...elevationValues);
+            var minElevation = Math.min(...elevationData.map(data => data.maxElevation).filter(value => value !== null));
+            var maxElevation = Math.max(...elevationData.map(data => data.maxElevation).filter(value => value !== null));
 
             var elevationChart = new Chart(chartCanvas, {
                 type: 'line',
@@ -688,7 +851,7 @@
                     }), // Use distance values as labels and convert to km if distance > 1000
                     datasets: [{
                         label: 'height',
-                        data: elevationData.map(data => data.elevation),
+                        data: elevationData.map(data => data.maxElevation),
                         borderColor: '#ffcc33',
                         backgroundColor: 'rgba(255, 204, 51, 0.8)', // Add transparency to the background color
                         borderWidth: 2,
@@ -700,7 +863,7 @@
                         y: {
                             scaleLabel: {
                                 display: true,
-                                labelString: `Elevation (m) - Min: ${minElevation.toFixed(2)}m, Max: ${maxElevation.toFixed(2)}m`,
+                                labelString: `Max Elevation (m) - Min: ${minElevation.toFixed(2)}m, Max: ${maxElevation.toFixed(2)}m`,
                                 fontSize: 16 // Increase font size for y-axis label
                             },
                             ticks: {
@@ -736,14 +899,18 @@
                 }
             });
 
-            // Hide animation container and show chart canvas
-            document.getElementById('animation-container').style.display = 'none';
-            document.getElementById('chart').style.display = 'block';
-
             // Display min and max elevation values
             document.getElementById('min-elevation').textContent = `Lowest: ${minElevation.toFixed(2)}m`;
             document.getElementById('max-elevation').textContent = `Highest: ${maxElevation.toFixed(2)}m`;
+
+            // Hide lottie animation loading container and show chart canvas, min and max elevation values
+            document.getElementById('animation-container').style.display = 'none';
+            document.getElementById('chart').style.display = 'block';
+            document.getElementById('min-elevation').style.display = 'block';
+            document.getElementById('max-elevation').style.display = 'block';
         }
+
+
     </script>
 
 </body>
