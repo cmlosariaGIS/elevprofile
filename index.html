@@ -338,7 +338,7 @@
 
     <script>
         // Initialize the map
-        /*var map = new ol.Map({
+       var map = new ol.Map({
             target: 'map',
             layers: [
                 new ol.layer.Tile({
@@ -352,10 +352,10 @@
                 center: ol.proj.fromLonLat([108.0378392, 12.348229]),
                 zoom: 15
             })
-        });*/
+        });
 
 
-        // Initialize the map
+        /*// Initialize the map
         var map = new ol.Map({
             target: 'map',
             layers: [
@@ -370,8 +370,7 @@
                 center: ol.proj.fromLonLat([108.0378392, 12.348229]),
                 zoom: 15
             })
-        });
-
+        });*/
 
 
         // Hide the button on map load
@@ -429,8 +428,6 @@
 
 
         //Functions to show and hide the Elevation Profile Disclaimer Message
-
-
         document.addEventListener('DOMContentLoaded', function () {
             // Get a reference to the info button
             const infoBtn = document.getElementById('info-ElevProfile-disclaimer-btn');
@@ -453,10 +450,6 @@
                 elevationDisclaimer.style.display = 'none';
             });
         });
-
-
-
-
 
 
         // Handle draw end event when the finish button is clicked
@@ -595,7 +588,6 @@
                             });
                     }
                 });
-
 
                 // Enable draw elevation measure line interaction
                 drawLineElevProfile = new ol.layer.Vector({
